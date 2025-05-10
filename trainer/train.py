@@ -122,8 +122,19 @@ def train_main(jsononly_or_paths, mode, modelname, vaename, *args):
     print(" Start Training!")
 
     if standalone:
+        checkpoint_filename = modelname
         if not os.path.exists(modelname):
-            checkpoint_filename = os.path.join(t.models_dir, modelname) if hasattr(t, "models_dir") else modelname
+            possible_paths = ["StableDiffusion", "Stable-diffusion", "stable-diffusion", "Stable-Diffusion"]
+            found = False
+            if hasattr(t, "models_dir"):
+                for path in possible_paths:
+                    full_path = os.path.join(t.models_dir, path, modelname)
+                    if os.path.exists(full_path):
+                        checkpoint_filename = full_path
+                        found = True
+                        break
+            if not found:
+                checkpoint_filename = os.path.join(t.models_dir, modelname) if hasattr(t, "models_dir") else modelname
         state_dict = trainer.load_torch_file(checkpoint_filename)
         model_version = detect_model_version(state_dict)
         del state_dict

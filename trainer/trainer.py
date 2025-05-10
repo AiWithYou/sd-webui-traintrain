@@ -612,7 +612,35 @@ def load_checkpoint_model(checkpoint_path, t, clip_skip = None, vae = None):
     return text_model, unet, vae
 
 def load_checkpoint_model_xl(checkpoint_path, t, vae = None):
-    pipe = StableDiffusionXLPipeline.from_single_file(checkpoint_path)
+    from safetensors.torch import load_file
+    from collections import OrderedDict
+    import torch
+    
+    # パスの正規化と確認
+    possible_paths = ["StableDiffusion", "Stable-diffusion", "stable-diffusion", "Stable-Diffusion"]
+    if not os.path.exists(checkpoint_path):
+        base_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+        filename = os.path.basename(checkpoint_path)
+        for path in possible_paths:
+            test_path = os.path.join(base_dir, path, filename)
+            if os.path.exists(test_path):
+                checkpoint_path = test_path
+                print(f"Found model at: {test_path}")
+                break
+    
+    # safetensorsファイルを直接ロード
+    state_dict = load_file(checkpoint_path)
+    
+    # Pipeline作成時に必要な最小限のコンポーネントを初期化
+    pipe = StableDiffusionXLPipeline.from_pretrained(
+        "stabilityai/stable-diffusion-xl-base-1.0",
+        torch_dtype=torch.float16,
+        use_safetensors=True,
+        variant="fp16",
+    )
+    
+    # state_dictをロード
+    pipe.load_state_dict(state_dict)
 
     unet = pipe.unet
     if vae is None and hasattr(pipe, "vae"):
@@ -899,6 +927,22 @@ def load_torch_file(ckpt, safe_load=False, device=None):
         from modules import checkpoint_pickle
     if device is None:
         device = torch.device("cpu")
+        
+    # パスの正規化
+    possible_paths = ["StableDiffusion", "Stable-diffusion", "stable-diffusion", "Stable-Diffusion"]
+    original_ckpt = ckpt
+    
+    # パスの存在確認と修正
+    if not os.path.exists(ckpt):
+        base_dir = os.path.dirname(os.path.dirname(ckpt))
+        filename = os.path.basename(ckpt)
+        for path in possible_paths:
+            test_path = os.path.join(base_dir, path, filename)
+            if os.path.exists(test_path):
+                ckpt = test_path
+                print(f"Found model at: {test_path}")
+                break
+    
     if ckpt.lower().endswith(".safetensors"):
         sd = safetensors.torch.load_file(ckpt, device=device.type)
     else:

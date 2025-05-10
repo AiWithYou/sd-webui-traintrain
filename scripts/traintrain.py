@@ -676,10 +676,13 @@ def get_models_list(vae):
         sd_path = ""
         if args.models_dir:
             root = args.models_dir
-            if os.path.exists(os.path.join(root, "StableDiffusion")):
-                sd_path = os.path.join(root, "StableDiffusion")
-            else:
-                sd_path = os.path.join(root, "Stable-Diffusion")
+            possible_paths = ["StableDiffusion", "Stable-diffusion", "stable-diffusion", "Stable-Diffusion"]
+            found_path = None
+            for path in possible_paths:
+                if os.path.exists(os.path.join(root, path)):
+                    found_path = path
+                    break
+            sd_path = os.path.join(root, found_path) if found_path else ""
         if args.ckpt_dir:
             sd_path = args.ckpt_dir
         if not sd_path or not os.path.exists(sd_path):
