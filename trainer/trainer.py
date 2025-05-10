@@ -639,8 +639,19 @@ def load_checkpoint_model_xl(checkpoint_path, t, vae = None):
         variant="fp16",
     )
     
-    # state_dictをロード
-    pipe.load_state_dict(state_dict)
+    # 各コンポーネントにstate_dictを個別に読み込む
+    components_patterns = {
+        "text_encoder": "^text_encoder\.",
+        "text_encoder_2": "^text_encoder_2\.",
+        "unet": "^unet\.",
+        "vae": "^vae\."
+    }
+
+    for component_name, pattern in components_patterns.items():
+        component_state_dict = {k.replace(f"{component_name}.", ""): v for k, v in state_dict.items() if k.startswith(f"{component_name}.")}
+        if component_state_dict:
+            if hasattr(pipe, component_name):
+                getattr(pipe, component_name).load_state_dict(component_state_dict)
 
     unet = pipe.unet
     if vae is None and hasattr(pipe, "vae"):
